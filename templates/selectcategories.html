@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Select choices:</h3>
+
+<form id="inputForm" method="post" action="{% url 'suggester' %}">
+    {% csrf_token %}
+    <div id="inputContainer">
+        {% for category, items in items_by_category.items %}
+        <div class="category-group">
+            <h2>{{ category }}</h2>
+            <div class="input-group">
+                <label>Item 1:</label>
+                <select name="item_{{ category }}[]" required>
+                    <option value="">Select an item</option>
+                    {% for item in items %}
+                    <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+       
+        {% endfor %}
+    </div>
+    <button class="button button2">Submit</button><br>
+</form>
+
+<style>
+    .input-group {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+    }
+    .category-group {
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
