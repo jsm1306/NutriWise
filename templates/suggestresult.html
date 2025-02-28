@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block content %}
+    <h3>Have a look at your optimized diet quantities:</h3>
+    <table id="dietTable" bgcolor="gray">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Quantity (in g)</th>
+                <th>Price (per 100g)</th>
+                <th>Image</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item, quantity, price in results %}
+            <tr>
+                <td>{{ item.item_name }}</td>
+                <td>{{ quantity|floatformat:2 }} g</td>  
+                <td>₹ {{ price }}</td>
+                <td>
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.item_name }}" style="width: 100px; height: 100px;">
+                    {% else %}
+                        No image available
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <!-- <p style="color: black;">Debug Data: {{ latestsub }}</p -->
+
+    <h3>Quantity Distribution</h3>
+    <canvas id="quantityChart" width="400" height="400"></canvas>
+
+    <div class="button-container">
+        <button class="button button-primary" onclick="downloadPDF()">Download PDF Report</button><br><br>
+        </div>
+        <div class="buttons">
+        <a href="{% url 'categorize' %}"><button type="button" class="button button-secondary">← Try more</button></a>
+        <a href="{% url 'moreinfo' %}"><button type="button" class="button button-secondary">Learn More</button></a>
+        <a href="{% url 'logout' %}"><button type="button" class="button button-danger">Logout</button></a>
+    </div>
+
+    <style>
+        .buttons{
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        canvas{
+            background-color: #ffffff; display:flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between; 
+            align-items: center;
+            width: 30%;
+            margin-top: 20px;
+            gap: 10px;
+        }
+
+        .button {
+            padding: 0px 20px;
+            font-size: 16px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .button-primary {
+            background-color: #0057ba;
+        }
+
+        .button-secondary {
+            background-color: #6c757d;
+        }
+
+        .button-danger {
+            background-color: 	#b23b3b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.26/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var canvas = document.getElementById('quantityChart');
+            var ctx = canvas.getContext('2d');
+    
+            canvas.style.width = '500px';
+            canvas.style.height = '500px';
+    
+            var data = {
+                labels: [
+                    {% for item, quantity, price in results %}
+                        "{{ item.item_name }}"
+                        {% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                datasets: [{
+                    data: [
+                        {% for item, quantity, price in results %}
+                            {{ quantity|floatformat:2 }}
+                            {% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.999)',
+                        'rgba(54, 162, 235, 0.999)',
+                        'rgba(255, 206, 86, 0.999)',
+                        'rgba(75, 192, 192, 0.999)',
+                        'rgba(153, 102, 255, 0.999)',
+                        'rgba(255, 159, 64, 0.999)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 132, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+    
+            var quantityChart = new Chart(ctx, {
+                type: 'pie',
+                data: data,
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (tooltipItem) {
+                                    return tooltipItem.label + ': ' + tooltipItem.raw + ' g';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            var doc = new jsPDF();
+            const date = new Date();
+            const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear().toString().slice(-2)}`;
+            doc.setFontSize(16);
+            doc.text('Report generated on: ' + new Date().toLocaleString(), 20, 280);    
+            
+            // Table 2: Input Food
+            doc.setFontSize(16);
+            doc.text('Your Food intake today:', 20, 20);
+    
+            var inputFoodData = [];
+            {% if latestsub %}
+                {% for item_entry in latestsub.items.all %}
+                    inputFoodData.push([
+                        "{{ item_entry.item_name|title }}",
+                        "{{ item_entry.quantity }}",
+                        "{{ item_entry.calories }}",
+                        "{{ item_entry.proteins }}",
+                        "{{ item_entry.fats }}",
+                        "{{ item_entry.sodium }}",
+                        "{{ item_entry.fiber }}",
+                        "{{ item_entry.carbs }}",
+                        "{{ item_entry.sugar }}"
+                    ]);
+                {% endfor %}
+            {% endif %}
+    
+            doc.autoTable({
+                head: [['Item Name', 'Quantity (g)', 'Calories', 'Proteins', 'Fats', 'Sodium', 'Fiber', 'Carbs', 'Sugar']],
+                body: inputFoodData,
+                startY: 30
+            });
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Optimized Diet Report:', 20, 20);
+
+            var table1 = document.getElementById("dietTable");
+            var table1Data = [];
+            for (var i = 1, row; row = table1.rows[i]; i++) {
+                var rowData = [];
+                for (var j = 0, col; col = row.cells[j]; j++) {
+                    rowData.push(col.innerText.trim());
+                }
+                table1Data.push(rowData);
+            }
+            doc.autoTable({ 
+                head: [['Item', 'Quantity (g)', 'Price (per 100g)']], 
+                body: table1Data,
+                startY: 20
+            });
+    
+    
+            doc.addPage();
+            var canvas = document.getElementById('quantityChart');
+            var dataUrl = canvas.toDataURL('image/png');
+            if (doc.internal.getNumberOfPages() === 1) {
+            doc.addPage(); // New page for the chart if not enough space
+        }
+            doc.addImage(dataUrl, 'PNG', 20, 20, 150, 150);
+            doc.save(`${formattedDate}_diet_report.pdf`);
+        }
+    </script>
+    {% endblock %}

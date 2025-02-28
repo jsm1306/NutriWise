@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+<h1> This is {{result}} page</h1>
+{% load static %}
+{% block content %}
+  
+  <form action="add" method="post">
+    {% csrf_token %}
+    <div class="login-container">
+      <div class="login">
+          <form>
+            <h1> Enter Your Details:</h1>
+            <label>Age</label><br>
+            <input type="number" name="age" ><br>
+            <label for="options">Gender:</label><br>
+            <select id="options" name="options"><br>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option><br>
+           </select><br>
+               <button class="button button2">Submit</button><br>
+               
+            </form>
+            
+          </form>
+        </div>
+      </div>
+      <a href="{% url 'logout' %}">
+        <button type="button" class="btn custom-register-btn">Logout</button>
+      </a>
+    </form>
+ 
+
+
+
+ 
+
+{% endblock %}
+

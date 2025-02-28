@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Category Wise Food Items (per 100 g)</h3>
+<div class="details">
+{% for category, items in items_by_category.items %}
+    <h3>{{ category }}</h3>
+    <ul>
+        {% for item in items %}
+            <li>{{ item.item_name }}   ₹{{ item.price }} </li>
+        {% empty %}
+            <li>No items available in this category.</li>
+        {% endfor %}
+    </ul>
+{% endfor %}
+</div>
+<style>
+    .details {
+        margin: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 20px; 
+        background-color: #f9f9f9b1;
+        line-height: 1.7; 
+    }
+</style>
+{% endblock %} 

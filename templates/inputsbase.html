@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3>Nutrition Intake Summary:</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Quantity (g)</th>
+            <th>Calories (Kcal)</th>
+            <th>Proteins (g)</th>
+            <th>Fats (g)</th>
+            <th>Sodium (mg)</th>
+            <th>Fiber (g)</th>
+            <th>Carbs (g)</th>
+            <th>Sugar (g)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item, quantity, item_info in item_details %}
+        <tr>
+            <td>{{ item }}</td>
+            <td>{{ quantity }}</td>
+            <td>{{ item_info.Calories }}</td>
+            <td>{{ item_info.Proteins }}</td>
+            <td>{{ item_info.Fats }}</td>
+            <td>{{ item_info.Sodium }}</td>
+            <td>{{ item_info.Fiber }}</td>
+            <td>{{ item_info.Carbs }}</td>
+            <td>{{ item_info.Sugar }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th>Total</th>
+            <th></th>
+            <th>{{ totals.Calories }}</th>
+            <th>{{ totals.Proteins }}</th>
+            <th>{{ totals.Fats }}</th>
+            <th>{{ totals.Sodium }}</th>
+            <th>{{ totals.Fiber }}</th>
+            <th>{{ totals.Carbs }}</th>
+            <th>{{ totals.Sugar }}</th>
+        </tr>
+        <tr>
+            <th>Minimum</th>
+            <th></th>
+            <th>{{ requirement.Calories }}</th>
+            <th>{{ requirement.Proteins }}</th>
+            <th>{{ requirement.Fats }}</th>
+            <th>{{ requirement.Sodium }}</th>
+            <th>{{ requirement.Fiber }}</th>
+            <th>{{ requirement.Carbs }}</th>
+            <th>{{ requirement.Sugar }}</th>
+        </tr>
+        <tr>
+            <th>Requirement met?</th>
+            <th></th>
+            <th class="{% if meets_requirements.Calories %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Calories %}Yes{% else %}No{% endif %}
+            </th>
+            <th class="{% if meets_requirements.Proteins %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Proteins %}Yes{% else %}No{% endif %}
+            </th>
+            <th class="{% if meets_requirements.Fats %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Fats %}Yes{% else %}No{% endif %}
+            </th>
+            <th class="{% if meets_requirements.Sodium %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Sodium %}Yes{% else %}No{% endif %}
+            </th>
+            <th class="{% if meets_requirements.Fiber %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Fiber %}Yes{% else %}No{% endif %}
+            </th>
+            <th class="{% if meets_requirements.Carbs %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Carbs %}Yes{% else %}No{% endif %}
+            </th>
+            <th class="{% if meets_requirements.Sugar %}status-yes{% else %}status-no{% endif %}">
+                {% if meets_requirements.Sugar %}Yes{% else %}No{% endif %}
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="button-container">
+    <a href="{% url 'score' %}">
+        <button type="button" class="btn btn-back">← Go Back</button>
+    </a>
+
+    {% if not meets_requirements.Calories or not meets_requirements.Proteins or not meets_requirements.Fats or not meets_requirements.Sodium or not meets_requirements.Fiber or not meets_requirements.Carbs or not meets_requirements.Sugar %}
+        <a href="{% url 'categorize' %}">
+            <button class="btn btn-suggest">Try our Diet Suggester</button>
+        </a>
+    {% endif %}
+</div>
+
+<style>
+    table {
+        margin: 20px auto;
+        width: 90%;
+        border-collapse: collapse;
+        text-align: center;
+    }
+
+    th, td {
+        border: 1px solid #ccc;
+        padding: 10px;
+    }
+
+    thead {
+        background-color: #f8f9fa;
+    }
+
+    tfoot th {
+        background-color: #e9ecef;
+    }
+
+    .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 5px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-back {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-back:hover {
+        background-color: #218838;
+    }
+
+    .btn-suggest {
+        background-color: #0057ba;
+        color: white;
+    }
+
+    .btn-suggest:hover {
+        background-color: #004085;
+    }
+
+    .status-yes {
+        color: #28a745;
+    }
+
+    .status-no {
+        color: #dc3545;
+    }
+</style>
+
+{% endblock %}
