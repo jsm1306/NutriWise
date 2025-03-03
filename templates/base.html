@@ -148,7 +148,6 @@ nav.navbar {
         font-weight: bold;
         color: rgb(0, 0, 0);
         margin-top: 0;
-        text-shadow: 1px 1px rgb(0, 255, 38);
         letter-spacing: 1px;
     }
     .nav-link {
@@ -168,6 +167,8 @@ nav.navbar {
       }
       nav ul li {
             margin: 0 15px;
+            text-decoration: underline;
+
         }
         nav ul li a:hover {
             text-decoration: underline;
@@ -295,9 +296,7 @@ nav.navbar {
 
 <body>
     {% include 'navbar.html' %}
-    <header>
-        <h3>Diet Suggester</h3>
-    </header>
+    
     <main>
         {% block content %}
         {% endblock %}

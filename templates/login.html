@@ -1,7 +1,33 @@
 {% extends 'base.html' %}
 {% block content %}
+<style>
+    .typing-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #000000;
+        width: 30ch;
+        font-family: monospace;
+        white-space: nowrap;
+        overflow: hidden;
+        border-right: 3px solid white;
+        animation: typing 3s steps(30) infinite alternate-reverse, blink 0.6s step-end infinite;
+    }
+
+    @keyframes typing {
+        from { width: 0; }
+        to { width: 30ch; }
+    }
+
+    @keyframes blink {
+        from, to { border-color: transparent; }
+        50% { border-color: white; }
+    }
+</style>
+<h2 class="typing-title">Welcome to NutriWise!</h2>
+
 <form method="POST" action="">
     {% csrf_token %}
+    
     <h1>Login</h1>
     <p>Username</p> <input type="text" name="username">
     <p>Password</p> <input type="password" name="password">
