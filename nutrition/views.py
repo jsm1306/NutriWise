@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import cache_control 
-
+import random
 
 def registerPage(request):
         form=UserCreationForm()
@@ -158,36 +158,33 @@ def score(request):#back button fn in inputsbase.html
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='login')
-def bmicalc(request):#bmi calculator
+def bmicalc(request):
     if request.method == "POST":
         weight = int(request.POST.get('weig', 0))
         height = int(request.POST.get('heig', 0))
         age = int(request.POST.get('age', 0))
         gender = request.POST.get('options', '')
-        if height<=0 or weight<=0:
-            errormsg="Height/Weight should be positive numbers. Please enter valid inputs."
-            return render(request, 'bmiresult.html', {'error': errormsg, 'age': age, 'gender': gender})
-        if age<0 or age >100:
-            errormsg="Invalid age."
-            return render(request, 'bmiresult.html', {'error': errormsg, 'age': age, 'gender': gender})
-        ht = height/100
-        val3 = weight/(ht**2)
-        if val3 < 18.5:
-            res = "Underweight"
-        elif 18.5 <= val3 < 25:
-            res = "Normal weight"
-        elif 25 <= val3 <= 29.9:
-            res = "Overweight"
-        elif 30 <= val3 <= 34.9:
-            res = "Obesity Class 1"
-        elif 35 <= val3 <= 39.9:
-            res = "Obesity Class 2"
-        elif val3 >= 40:
-            res = "Obesity Class 3"
+
+        if height <= 0 or weight <= 0:
+            return render(request, 'bmiresult.html', {'error': "Height/Weight should be positive numbers.", 'age': age, 'gender': gender})
+        if age < 0 or age > 100:
+            return render(request, 'bmiresult.html', {'error': "Invalid age.", 'age': age, 'gender': gender})
+
+        bmi_value = weight / ((height / 100) ** 2)
+
+        if bmi_value < 18.5:
+            category = "Underweight"
+        elif 18.5 <= bmi_value < 25:
+            category = "Normal weight"
+        elif 25 <= bmi_value < 29.9:
+            category = "Overweight"
         else:
-            res = "Invalid BMI"
-        BMICalculation.objects.create(weight=weight, height=height, bmi_value=val3, gender=gender, category=res)
-        return render(request, 'bmiresult.html', {'result': round(val3), 'age': age, 'gender': gender, 'category': res})
+            category = "Obese"
+
+        BMICalculation.objects.create(weight=weight, height=height, bmi_value=bmi_value, gender=gender, category=category)
+
+        return render(request, 'bmiresult.html', {'result': round(bmi_value, 2), 'age': age, 'gender': gender, 'category': category})
+
     return render(request, 'bmical.html')
 @login_required(login_url='login')
 def daily(request):#this fn is to determine the min requirements based on age&gender, use in compute fn
@@ -325,3 +322,73 @@ def user_history(request):
 @login_required
 def moreinfo(request):
     return render(request,'optimzerinfo.html')
+
+def generate_meal_plan(request):
+    if request.method == "POST":
+        category_name = request.POST.get('bmi_category')  
+        budget = int(request.POST.get('budget'))
+
+        try:
+            tiffin_category = Category.objects.get(name="Tiffin")
+            main_course_category = Category.objects.get(name="Main Course")
+        except Category.DoesNotExist:
+            return render(request, 'bmiresult.html', {'error': "One or more categories are missing in the database."})
+
+        meal_plan = []
+        total_budget = 0  
+        total_calories = 0  
+        item_quantities = {}  
+
+        for day in range(7):  
+            day_plan = {"Breakfast": "", "Lunch": "", "Dinner": ""}
+
+            tiffin_items = list(NutritionInfo.objects.filter(category=tiffin_category))
+            if tiffin_items:
+                chosen_item = random.choice(tiffin_items)
+                quantity, cost = adjust_quantity(chosen_item, category_name)
+                day_plan["Breakfast"] = f"{chosen_item.item_name} ({quantity}g)"
+                total_budget += cost
+                total_calories += chosen_item.calories * (quantity / 100)
+                item_quantities[chosen_item.item_name] = quantity
+            
+            main_course_items = list(NutritionInfo.objects.filter(category=main_course_category))
+            if main_course_items:
+                chosen_item = random.choice(main_course_items)
+                quantity, cost = adjust_quantity(chosen_item, category_name)
+                day_plan["Lunch"] = f"{chosen_item.item_name} ({quantity}g)"
+                total_budget += cost
+                total_calories += chosen_item.calories * (quantity / 100)
+                item_quantities[chosen_item.item_name] = quantity
+            
+            dinner_items = tiffin_items + main_course_items
+            if dinner_items:
+                chosen_item = random.choice(dinner_items)
+                quantity, cost = adjust_quantity(chosen_item, category_name)
+                day_plan["Dinner"] = f"{chosen_item.item_name} ({quantity}g)"
+                total_budget += cost
+                total_calories += chosen_item.calories * (quantity / 100)
+                item_quantities[chosen_item.item_name] = quantity
+            
+            meal_plan.append(day_plan)
+
+        return render(request, 'mealplan.html', {
+            'meal_plan': meal_plan,
+            'budget': budget,
+            'total_budget': total_budget,
+            'total_calories': total_calories,
+            'item_quantities': item_quantities
+        })
+
+    return render(request, 'bmiresult.html', {'error': "Invalid request."})
+
+def adjust_quantity(item, category_name):
+    base_quantity = 100  
+    if category_name == "Underweight":
+        quantity = base_quantity * 1.5  
+    elif category_name == "Overweight":
+        quantity = base_quantity * 0.7  
+    else:
+        quantity = base_quantity  
+
+    cost = (item.price / item.unit_weight) * quantity  
+    return round(quantity, 2), round(cost, 2)

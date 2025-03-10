@@ -21,10 +21,12 @@ class BMICalculation(models.Model):
     bmi_value = models.FloatField()
     gender = models.CharField(max_length=10)
     category = models.CharField(max_length=100,default=0)
+    daily_calories_needed = models.FloatField(default=2000)  
+    goal = models.CharField(max_length=20, choices=[('gain', 'Gain Weight'), ('lose', 'Lose Weight'), ('maintain', 'Maintain Weight')], default='maintain')
     calculated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"BMI: {self.bmi_value}"
+        return f"BMI: {self.bmi_value}  - Goal: {self.goal}"
 
 
 class UserSubmission(models.Model):

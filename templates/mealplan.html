@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<style>
+    h1, p, h2 {
+        color: #333;
+        font-family: 'Arial', sans-serif;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-family: 'Arial', sans-serif;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: center;
+    }
+    th {
+        background-color: #f4f4f4;
+        color: #333;
+    }
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    tr:hover {
+        background-color: #f1f1f1;
+    }
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+    }
+    .btn-primary {
+        display: inline-block;
+        padding: 10px 20px;
+        color: #fff;
+        background-color: #007bff;
+        border: none;
+        border-radius: 4px;
+        text-decoration: none;
+        font-family: 'Arial', sans-serif;
+    }
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+        font-family: 'Arial', sans-serif;
+    }
+    
+</style>
+
+<div class="container mt-4">
+    <h1 class="mb-3">Your Weekly Meal Plan</h1>
+    <p><strong>Weekly Budget Entered:</strong> ₹{{ budget }}</p>
+    <p><strong>Total Budget Used:</strong> ₹{{ total_budget }}</p>
+    <p><strong>Total Calories for the Week:</strong> {{ total_calories }} kcal</p>
+
+    <h2 class="mt-4">Meal Plan</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Breakfast</th>
+                <th>Lunch</th>
+                <th>Dinner</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for day, plan in meal_plan.items %}
+            <tr>
+                <td>Day {{ day }}</td>
+                <td>{{ plan.Breakfast }}</td>
+                <td>{{ plan.Lunch }}</td>
+                <td>{{ plan.Dinner }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="mt-4">Item Quantities</h2>
+    <ul>
+        {% for item, quantity in item_quantities.items %}
+        <li><strong>{{ item }}:</strong> {{ quantity }}g</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{% url 'bmicalc' %}" class="btn btn-primary mt-3">Recalculate BMI</a>
+</div>
+
+{% endblock %}
