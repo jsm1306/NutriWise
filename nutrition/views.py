@@ -396,18 +396,25 @@ def optimize_and_validate(selected_items):
     unhealthy_items = []
     A = []
     cost = []
-    
+    bounds = []
+
     for meal, items in selected_items.items():
         for item_name in items:
             try:
                 food = NutritionInfo.objects.get(item_name=item_name)
                 food_items.append(item_name)
-                A.append([food.calories, food.proteins, food.fats, food.sodium, food.fiber, food.carbs, food.sugar])
+                A.append([
+                    food.calories, food.proteins, food.fats, food.sodium, 
+                    food.fiber, food.carbs, food.sugar
+                ])
                 cost.append(food.price)
+
                 if food.healthy:
                     healthy_items.append(item_name)
+                    bounds.append((2, 10))  
                 else:
                     unhealthy_items.append(item_name)
+                    bounds.append((2, 3))  
             except NutritionInfo.DoesNotExist:
                 print(f"Item '{item_name}' not found in NutritionInfo table.")
 
@@ -425,13 +432,11 @@ def optimize_and_validate(selected_items):
         print("Validation failed: Unhealthy/healthy balance not met.")
         return [], "No"
 
-    A = np.array(A).T 
+    A = np.array(A).T  
 
     if A.shape[1] == 0:
         print("Validation failed: No valid nutrition data.")
         return [], "No"
-
-    bounds = [(2,None)] * len(food_items)  
 
     print("A matrix:", A)
     print("Required nutrition:", required_nutrition)
@@ -465,6 +470,7 @@ def optimize_and_validate(selected_items):
     except Exception as e:
         print(f"Error in optimization: {e}")
         return [], "No"
+
 
 def finalize_meal_plan(request):
     return render(request, 'final_mealplan.html', {'user_meal_plan': user_meal_plan})
