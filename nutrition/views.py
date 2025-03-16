@@ -323,72 +323,148 @@ def user_history(request):
 def moreinfo(request):
     return render(request,'optimzerinfo.html')
 
-def generate_meal_plan(request):
+
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from .models import Category, NutritionInfo
+import numpy as np
+from scipy.optimize import linprog
+import logging
+
+logger = logging.getLogger(__name__)
+
+def load_data():
+    return {
+        'calories': 2000,
+        'proteins': 50,
+        'fats': 70,
+        'sodium': 2300,
+        'fiber': 30,
+        'carbs': 250,
+        'sugar': 50
+    }
+
+def meal_plan(request):
+    categories = {cat.name.lower(): cat for cat in Category.objects.all()}
+    meal_categories = {
+        'morning': NutritionInfo.objects.filter(category=categories.get("tiffin")),
+        'afternoon': NutritionInfo.objects.all(),
+        'evening': NutritionInfo.objects.filter(category=categories.get("snacks")),
+        'night': NutritionInfo.objects.all()
+    }
+    days = list(range(1, 8))
+    current_day = int(request.GET.get('day', 1))
+    if 'selected_items' not in request.session:
+        request.session['selected_items'] = {day: {'morning': [], 'afternoon': [], 'evening': [], 'night': []} for day in days}
+    selected_items = request.session['selected_items']
+    notification = ""
     if request.method == "POST":
-        category_name = request.POST.get('bmi_category')  
-        budget = int(request.POST.get('budget'))
+        selected_day = int(request.POST.get("day", current_day))
+        selected_items[selected_day] = {
+            'morning': request.POST.getlist("morning[]"),
+            'afternoon': request.POST.getlist("afternoon[]"),
+            'evening': request.POST.getlist("evening[]"),
+            'night': request.POST.getlist("night[]"),
+        }
+        request.session['selected_items'] = selected_items
+        optimized_plan, validation_result = optimize_and_validate(selected_items[selected_day])
+        if validation_result == "Yes":
+            notification = "Meal validated and optimized successfully!"
+            next_day = min(selected_day + 1, 7)
+            return redirect(f"{reverse('mealplan')}?day={next_day}")
+        else:
+            notification = "Meal validation failed. Please adjust your meal plan."
+    return render(request, 'mealplan.html', {
+        'days': days,
+        'current_day': current_day,
+        'meal_categories': meal_categories,
+        'selected_items': selected_items.get(current_day, {}),
+        'tiffins': meal_categories['morning'],
+        'snacks': meal_categories['evening'],
+        'notification': notification,
+        'all_items': NutritionInfo.objects.all(),
+    })
 
-        try:
-            tiffin_category = Category.objects.get(name="Tiffin")
-            main_course_category = Category.objects.get(name="Main Course")
-        except Category.DoesNotExist:
-            return render(request, 'bmiresult.html', {'error': "One or more categories are missing in the database."})
+import numpy as np
+from scipy.optimize import linprog
 
-        meal_plan = []
-        total_budget = 0  
-        total_calories = 0  
-        item_quantities = {}  
+def optimize_and_validate(selected_items):
+    required_nutrition = load_data()
+    total_nutrition = {key: 0 for key in required_nutrition}
+    food_items = []
+    healthy_items = []
+    unhealthy_items = []
+    A = []
+    cost = []
+    
+    for meal, items in selected_items.items():
+        for item_name in items:
+            try:
+                food = NutritionInfo.objects.get(item_name=item_name)
+                food_items.append(item_name)
+                A.append([food.calories, food.proteins, food.fats, food.sodium, food.fiber, food.carbs, food.sugar])
+                cost.append(food.price)
+                if food.healthy:
+                    healthy_items.append(item_name)
+                else:
+                    unhealthy_items.append(item_name)
+            except NutritionInfo.DoesNotExist:
+                print(f"Item '{item_name}' not found in NutritionInfo table.")
 
-        for day in range(7):  
-            day_plan = {"Breakfast": "", "Lunch": "", "Dinner": ""}
+    print(f"Selected Food Items: {food_items}")
+    print(f"Healthy: {len(healthy_items)}, Unhealthy: {len(unhealthy_items)}")
 
-            tiffin_items = list(NutritionInfo.objects.filter(category=tiffin_category))
-            if tiffin_items:
-                chosen_item = random.choice(tiffin_items)
-                quantity, cost = adjust_quantity(chosen_item, category_name)
-                day_plan["Breakfast"] = f"{chosen_item.item_name} ({quantity}g)"
-                total_budget += cost
-                total_calories += chosen_item.calories * (quantity / 100)
-                item_quantities[chosen_item.item_name] = quantity
-            
-            main_course_items = list(NutritionInfo.objects.filter(category=main_course_category))
-            if main_course_items:
-                chosen_item = random.choice(main_course_items)
-                quantity, cost = adjust_quantity(chosen_item, category_name)
-                day_plan["Lunch"] = f"{chosen_item.item_name} ({quantity}g)"
-                total_budget += cost
-                total_calories += chosen_item.calories * (quantity / 100)
-                item_quantities[chosen_item.item_name] = quantity
-            
-            dinner_items = tiffin_items + main_course_items
-            if dinner_items:
-                chosen_item = random.choice(dinner_items)
-                quantity, cost = adjust_quantity(chosen_item, category_name)
-                day_plan["Dinner"] = f"{chosen_item.item_name} ({quantity}g)"
-                total_budget += cost
-                total_calories += chosen_item.calories * (quantity / 100)
-                item_quantities[chosen_item.item_name] = quantity
-            
-            meal_plan.append(day_plan)
+    total_items = len(food_items)
+    if total_items == 0:
+        print("Validation failed: No items selected.")
+        return [], "No"
 
-        return render(request, 'mealplan.html', {
-            'meal_plan': meal_plan,
-            'budget': budget,
-            'total_budget': total_budget,
-            'total_calories': total_calories,
-            'item_quantities': item_quantities
-        })
+    min_healthy = int(0.7 * total_items)
+    max_unhealthy = total_items - min_healthy
+    if len(healthy_items) < min_healthy or len(unhealthy_items) > max_unhealthy:
+        print("Validation failed: Unhealthy/healthy balance not met.")
+        return [], "No"
 
-    return render(request, 'bmiresult.html', {'error': "Invalid request."})
+    A = np.array(A).T 
 
-def adjust_quantity(item, category_name):
-    base_quantity = 100  
-    if category_name == "Underweight":
-        quantity = base_quantity * 1.5  
-    elif category_name == "Overweight":
-        quantity = base_quantity * 0.7  
-    else:
-        quantity = base_quantity  
+    if A.shape[1] == 0:
+        print("Validation failed: No valid nutrition data.")
+        return [], "No"
 
-    cost = (item.price / item.unit_weight) * quantity  
-    return round(quantity, 2), round(cost, 2)
+    bounds = [(2,None)] * len(food_items)  
+
+    print("A matrix:", A)
+    print("Required nutrition:", required_nutrition)
+
+    try:
+        res = linprog(
+            c=cost, 
+            A_ub=-A,  
+            b_ub=-np.array(list(required_nutrition.values())),  
+            bounds=bounds,
+            method="highs"
+        )
+
+        print(f"Optimization success: {res.success}, Message: {res.message}")
+        print(f"Optimized meal plan: {res.x}")
+
+        if not res.success:
+            print("Optimization failed. Detailed results:")
+            print(f"Status: {res.status}")
+            print(f"Fun: {res.fun}")
+            print(f"X: {res.x}")
+            print(f"Slack: {res.slack}")
+            print(f"Con: {res.con}")
+            print(f"Message: {res.message}")
+
+        if res.success:
+            return list(zip(food_items, res.x)), "Yes"
+        else:
+            return [], "No"
+
+    except Exception as e:
+        print(f"Error in optimization: {e}")
+        return [], "No"
+
+def finalize_meal_plan(request):
+    return render(request, 'final_mealplan.html', {'user_meal_plan': user_meal_plan})

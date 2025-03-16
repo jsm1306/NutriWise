@@ -1,97 +1,145 @@
-{% extends "base.html" %}
-{% load static %}
+{% extends 'base.html' %}
+
 {% block content %}
-<style>
-    h1, p, h2 {
-        color: #333;
-        font-family: 'Arial', sans-serif;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-        font-family: 'Arial', sans-serif;
-    }
-    th, td {
-        border: 1px solid #ddd;
-        padding: 12px;
-        text-align: center;
-    }
-    th {
-        background-color: #f4f4f4;
-        color: #333;
-    }
-    tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-    tr:hover {
-        background-color: #f1f1f1;
-    }
-    .container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #fff;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
-    }
-    .btn-primary {
-        display: inline-block;
-        padding: 10px 20px;
-        color: #fff;
-        background-color: #007bff;
-        border: none;
-        border-radius: 4px;
-        text-decoration: none;
-        font-family: 'Arial', sans-serif;
-    }
-    .btn-primary:hover {
-        background-color: #0056b3;
-    }
-    ul {
-        list-style-type: none;
-        padding: 0;
-        font-family: 'Arial', sans-serif;
-    }
+<h2>7-Day Meal Planner</h2>
+
+{% if notification %}
+    <p>{{ notification }}</p>
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
     
-</style>
-
-<div class="container mt-4">
-    <h1 class="mb-3">Your Weekly Meal Plan</h1>
-    <p><strong>Weekly Budget Entered:</strong> ₹{{ budget }}</p>
-    <p><strong>Total Budget Used:</strong> ₹{{ total_budget }}</p>
-    <p><strong>Total Calories for the Week:</strong> {{ total_calories }} kcal</p>
-
-    <h2 class="mt-4">Meal Plan</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Day</th>
-                <th>Breakfast</th>
-                <th>Lunch</th>
-                <th>Dinner</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for day, plan in meal_plan.items %}
-            <tr>
-                <td>Day {{ day }}</td>
-                <td>{{ plan.Breakfast }}</td>
-                <td>{{ plan.Lunch }}</td>
-                <td>{{ plan.Dinner }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <h2 class="mt-4">Item Quantities</h2>
-    <ul>
-        {% for item, quantity in item_quantities.items %}
-        <li><strong>{{ item }}:</strong> {{ quantity }}g</li>
+    <label for="day">Select Day:</label>
+    <select id="day" name="day" onchange="updateForm()">
+        {% for d in days %}
+            <option value="{{ d }}" {% if d == current_day %}selected{% endif %}>Day {{ d }}</option>
         {% endfor %}
-    </ul>
+    </select>
 
-    <a href="{% url 'bmicalc' %}" class="btn btn-primary mt-3">Recalculate BMI</a>
-</div>
+    <div id="meal-selection">
+        <h3>Day <span id="selected-day">{{ current_day }}</span></h3>
+
+        <div id="morning-container">
+            <label>Morning (Tiffins):</label>
+            <div class="input-group">
+                <select name="morning[]">
+                    <option value="">Select an item</option>
+                    {% for item in tiffins %}
+                        <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="addMeal('morning-container', 'morning', 'tiffins')">+</button>
+            </div>
+        </div>
+
+        <div id="afternoon-container">
+            <label>Afternoon:</label>
+            <div class="input-group">
+                <select name="afternoon[]">
+                    <option value="">Select an item</option>
+                    {% for item in all_items %}
+                        <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="addMeal('afternoon-container', 'afternoon', 'all_items')">+</button>
+            </div>
+        </div>
+
+        <div id="evening-container">
+            <label>Evening (Snacks):</label>
+            <div class="input-group">
+                <select name="evening[]">
+                    <option value="">Select an item</option>
+                    {% for item in snacks %}
+                        <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="addMeal('evening-container', 'evening', 'snacks')">+</button>
+            </div>
+        </div>
+
+        <div id="night-container">
+            <label>Night:</label>
+            <div class="input-group">
+                <select name="night[]">
+                    <option value="">Select an item</option>
+                    {% for item in all_items %}
+                        <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="addMeal('night-container', 'night', 'all_items')">+</button>
+            </div>
+        </div>
+
+        <button type="submit" name="validate">Validate</button>
+    </div>
+</form>
+
+{% if validation_result %}
+    <h3>Validation Result: {{ validation_result }}</h3>
+    {% if validation_result == "Yes" %}
+        <a href="?next_day={{ next_day }}">Proceed to Next Day</a>
+    {% endif %}
+{% endif %}
+
+<script>
+    function addMeal(containerId, name, category) {
+        const container = document.getElementById(containerId);
+        const newInputGroup = document.createElement('div');
+        newInputGroup.classList.add('input-group');
+
+        let options = "";
+        {% for item in tiffins %}
+            if (category === "tiffins") {
+                options += `<option value="{{ item.item_name }}">{{ item.item_name }}</option>`;
+            }
+        {% endfor %}
+        {% for item in snacks %}
+            if (category === "snacks") {
+                options += `<option value="{{ item.item_name }}">{{ item.item_name }}</option>`;
+            }
+        {% endfor %}
+        {% for item in all_items %}
+            if (category === "all_items") {
+                options += `<option value="{{ item.item_name }}">{{ item.item_name }}</option>`;
+            }
+        {% endfor %}
+
+        newInputGroup.innerHTML = `
+            <select name="${name}[]">
+                <option value="">Select an item</option>
+                ${options}
+            </select>
+            <button type="button" onclick="this.parentElement.remove()">-</button>
+        `;
+        container.appendChild(newInputGroup);
+    }
+</script>
+
+<style>
+    .input-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    .input-group select {
+        margin-right: 5px;
+    }
+    button {
+        background-color: #0076f4;
+        color: white;
+        padding: 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #005bb5;
+    }
+    p, h1, h2, h3 {
+        color: #000000;
+    }
+</style>
 
 {% endblock %}

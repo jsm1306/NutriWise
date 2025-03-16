@@ -17,8 +17,8 @@ urlpatterns=[
     path('login/',views.loginPage,name='login'),
     path('logout/',views.logoutPage,name='logout'),
     path('user-history/', views.user_history, name='user_history'),
-    path('moreinfo/',views.moreinfo,name='moreinfo'),
-    path('generate_meal_plan/', views.generate_meal_plan, name='generate_meal_plan'),
-
+    path('moreinfo/',views.moreinfo,name='moreinfo'), 
+    path('mealplan/', views.meal_plan, name='mealplan'),
+    path('finalize-meal-plan/', views.finalize_meal_plan, name='finalize_meal_plan'),
 
 ]

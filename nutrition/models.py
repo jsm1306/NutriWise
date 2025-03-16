@@ -49,6 +49,7 @@ class NutritionInfo(models.Model):
     price = models.FloatField(default=0)
     image = models.ImageField(upload_to='nutrition_images/', null=True, blank=True)
     unit_weight = models.FloatField(default=100)
+    healthy = models.BooleanField(default=True)  
 
     def __str__(self):
         return self.item_name
