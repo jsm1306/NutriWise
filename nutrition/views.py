@@ -370,6 +370,8 @@ def meal_plan(request):
         optimized_plan, validation_result = optimize_and_validate(selected_items[selected_day])
         if validation_result == "Yes":
             notification = "Meal validated and optimized successfully!"
+            if selected_day == 7:
+                return redirect(reverse('finalize_meal_plan'))
             next_day = min(selected_day + 1, 7)
             return redirect(f"{reverse('mealplan')}?day={next_day}")
         else:
@@ -414,7 +416,7 @@ def optimize_and_validate(selected_items):
                     bounds.append((2, 10))  
                 else:
                     unhealthy_items.append(item_name)
-                    bounds.append((2, 3))  
+                    bounds.append((0, 3))  
             except NutritionInfo.DoesNotExist:
                 print(f"Item '{item_name}' not found in NutritionInfo table.")
 
@@ -439,6 +441,7 @@ def optimize_and_validate(selected_items):
         return [], "No"
 
     print("A matrix:", A)
+    print("Cost:", cost)
     print("Required nutrition:", required_nutrition)
 
     try:
@@ -473,4 +476,16 @@ def optimize_and_validate(selected_items):
 
 
 def finalize_meal_plan(request):
-    return render(request, 'final_mealplan.html', {'user_meal_plan': user_meal_plan})
+    user_meal_plan = request.session.get('selected_items', {})
+    optimized_meal_plan = {}
+
+    for day, meals in user_meal_plan.items():
+        optimized_meal_plan[day] = {}
+        for meal_time, items in meals.items():
+            optimized_items, validation_result = optimize_and_validate({meal_time: items})
+            optimized_meal_plan[day][meal_time] = optimized_items
+
+    return render(request, 'newhtml.html', {
+        'user_meal_plan': user_meal_plan,
+        'optimized_meal_plan': optimized_meal_plan
+    })

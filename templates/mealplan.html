@@ -10,12 +10,7 @@
 <form method="POST">
     {% csrf_token %}
     
-    <label for="day">Select Day:</label>
-    <select id="day" name="day" onchange="updateForm()">
-        {% for d in days %}
-            <option value="{{ d }}" {% if d == current_day %}selected{% endif %}>Day {{ d }}</option>
-        {% endfor %}
-    </select>
+    
 
     <div id="meal-selection">
         <h3>Day <span id="selected-day">{{ current_day }}</span></h3>
