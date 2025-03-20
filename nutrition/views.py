@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.urls import reverse
 import requests
 from django.conf import settings
 from .models import *
@@ -10,6 +11,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import cache_control 
 import random
+from django.shortcuts import get_object_or_404
 
 def registerPage(request):
         form=UserCreationForm()
@@ -74,6 +76,12 @@ def add(request):
             request.session['age'] = age
             request.session['gender'] = gender
             request.session['name'] = username
+            user = User.objects.filter(username=username).first()
+            if user:
+                user_profile, created = UserProfile.objects.get_or_create(user=user)
+                user_profile.age = age
+                user_profile.gender = gender
+                user_profile.save()
 
             nutrition_items = NutritionInfo.objects.all()
 
@@ -217,8 +225,8 @@ def daily(request):#this fn is to determine the min requirements based on age&ge
 
 def load_nutrition_data():# this fn is to load the nutrition data of items and use in compute fn
     nutrition_data = {}
-    nutition_items = NutritionInfo.objects.all()
-    for item in nutition_items:
+    nutrition_items = NutritionInfo.objects.all()
+    for item in nutrition_items:
         nutrition_data[item.item_name.lower()] = {
             'Calories': item.calories,
             'Proteins': item.proteins,
@@ -323,27 +331,6 @@ def user_history(request):
 def moreinfo(request):
     return render(request,'optimzerinfo.html')
 
-
-from django.shortcuts import render, redirect
-from django.urls import reverse
-from .models import Category, NutritionInfo
-import numpy as np
-from scipy.optimize import linprog
-import logging
-
-logger = logging.getLogger(__name__)
-
-def load_data():
-    return {
-        'calories': 2000,
-        'proteins': 50,
-        'fats': 70,
-        'sodium': 2300,
-        'fiber': 30,
-        'carbs': 250,
-        'sugar': 50
-    }
-
 def meal_plan(request):
     categories = {cat.name.lower(): cat for cat in Category.objects.all()}
     meal_categories = {
@@ -363,11 +350,11 @@ def meal_plan(request):
         selected_items[selected_day] = {
             'morning': request.POST.getlist("morning[]"),
             'afternoon': request.POST.getlist("afternoon[]"),
-            'evening': request.POST.getlist("evening[]"),
+            'evening': request.POST.getlist("evening[]"),   
             'night': request.POST.getlist("night[]"),
         }
         request.session['selected_items'] = selected_items
-        optimized_plan, validation_result = optimize_and_validate(selected_items[selected_day])
+        optimized_plan, validation_result = optimize_and_validate(request,selected_items[selected_day])
         if validation_result == "Yes":
             notification = "Meal validated and optimized successfully!"
             if selected_day == 7:
@@ -386,12 +373,40 @@ def meal_plan(request):
         'notification': notification,
         'all_items': NutritionInfo.objects.all(),
     })
+def daily_nutrition_requirements(age, gender):
+    DAILY_REQUIREMENTS = {
+        'Female': {
+            (4, 8):  {'Calories': 1200, 'Proteins': 19, 'Fats': 70, 'Sodium': 2300, 'Fiber': 25, 'Carbs': 260, 'Sugar': 50},
+            (9, 13): {'Calories': 1600, 'Proteins': 34, 'Fats': 70, 'Sodium': 2300, 'Fiber': 26, 'Carbs': 290, 'Sugar': 50},
+            (14, 18): {'Calories': 1800, 'Proteins': 46, 'Fats': 70, 'Sodium': 2300, 'Fiber': 26, 'Carbs': 300, 'Sugar': 50},
+            (19, 30): {'Calories': 2000, 'Proteins': 46, 'Fats': 70, 'Sodium': 2300, 'Fiber': 28, 'Carbs': 310, 'Sugar': 50},
+            (31, 50): {'Calories': 1800, 'Proteins': 46, 'Fats': 70, 'Sodium': 2300, 'Fiber': 28, 'Carbs': 300, 'Sugar': 50},
+            (51, 70): {'Calories': 1600, 'Proteins': 46, 'Fats': 70, 'Sodium': 2300, 'Fiber': 28, 'Carbs': 260, 'Sugar': 50},
+            (71, 100): {'Calories': 1500, 'Proteins': 46, 'Fats': 70, 'Sodium': 2300, 'Fiber': 28, 'Carbs': 250, 'Sugar': 50},
+        },
+        'Male': {
+            (4, 8):  {'Calories': 1400, 'Proteins': 19, 'Fats': 70, 'Sodium': 2300, 'Fiber': 25, 'Carbs': 270, 'Sugar': 50},
+            (9, 13): {'Calories': 1800, 'Proteins': 34, 'Fats': 70, 'Sodium': 2300, 'Fiber': 31, 'Carbs': 300, 'Sugar': 50},
+            (14, 18): {'Calories': 2200, 'Proteins': 52, 'Fats': 70, 'Sodium': 2300, 'Fiber': 31, 'Carbs': 320, 'Sugar': 50},
+            (19, 30): {'Calories': 2400, 'Proteins': 56, 'Fats': 70, 'Sodium': 2300, 'Fiber': 34, 'Carbs': 330, 'Sugar': 50},
+            (31, 50): {'Calories': 2200, 'Proteins': 56, 'Fats': 70, 'Sodium': 2300, 'Fiber': 34, 'Carbs': 300, 'Sugar': 50},
+            (51, 70): {'Calories': 2000, 'Proteins': 56, 'Fats': 70, 'Sodium': 2300, 'Fiber': 30, 'Carbs': 280, 'Sugar': 50},
+            (71, 100): {'Calories': 1800, 'Proteins': 56, 'Fats': 70, 'Sodium': 2300, 'Fiber': 30, 'Carbs': 250, 'Sugar': 50},
+        }
+    }
 
-import numpy as np
-from scipy.optimize import linprog
+    for age_range, requirements in DAILY_REQUIREMENTS.get(gender, {}).items():
+        if age_range[0] <= age <= age_range[1]:
+            return requirements
+    return {}  
 
-def optimize_and_validate(selected_items):
-    required_nutrition = load_data()
+def optimize_and_validate(request,selected_items):
+    user_profile = get_object_or_404(UserProfile, user=request.user)
+
+    age = user_profile.age
+    gender = user_profile.gender
+
+    required_nutrition = daily_nutrition_requirements(age, gender)
     total_nutrition = {key: 0 for key in required_nutrition}
     food_items = []
     healthy_items = []
@@ -416,7 +431,7 @@ def optimize_and_validate(selected_items):
                     bounds.append((2, 10))  
                 else:
                     unhealthy_items.append(item_name)
-                    bounds.append((0, 3))  
+                    bounds.append((1, 3))  
             except NutritionInfo.DoesNotExist:
                 print(f"Item '{item_name}' not found in NutritionInfo table.")
 
@@ -466,7 +481,8 @@ def optimize_and_validate(selected_items):
             print(f"Message: {res.message}")
 
         if res.success:
-            return list(zip(food_items, res.x)), "Yes"
+            optimized_quantities= [x*100 for x in res.x]
+            return list(zip(food_items, optimized_quantities)), "Yes"
         else:
             return [], "No"
 
@@ -482,7 +498,7 @@ def finalize_meal_plan(request):
     for day, meals in user_meal_plan.items():
         optimized_meal_plan[day] = {}
         for meal_time, items in meals.items():
-            optimized_items, validation_result = optimize_and_validate({meal_time: items})
+            optimized_items, validation_result = optimize_and_validate(request, {meal_time: items})
             optimized_meal_plan[day][meal_time] = optimized_items
 
     return render(request, 'newhtml.html', {

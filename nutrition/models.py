@@ -10,7 +10,8 @@ class Category(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE,null=True)
- 
+    age = models.IntegerField(null=True,blank=True)
+    gender = models.CharField(max_length=10, null=True,blank=True)
 
     def __str__(self):
         return self.user.username
