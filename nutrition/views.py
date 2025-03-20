@@ -505,3 +505,11 @@ def finalize_meal_plan(request):
         'user_meal_plan': user_meal_plan,
         'optimized_meal_plan': optimized_meal_plan
     })
+'''
+Changes to be made:
+● Should add more items to database
+● Should render the quantity
+● Should also add a constraint to add min of 6 items in a day
+● Should plan to add constraint week wise
+● maybe fix ui lollll
+'''
