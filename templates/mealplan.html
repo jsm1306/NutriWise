@@ -1,0 +1,158 @@
+{% extends 'base.html' %} {% block content %}
+<h2>7-Day Meal Planner</h2>
+
+{% if notification %}
+<p>{{ notification }}</p>
+{% endif %}
+
+<form method="POST">
+  {% csrf_token %}
+
+  <div id="meal-selection">
+    <h3>Day <span id="selected-day">{{ current_day }}</span></h3>
+
+    <div id="morning-container">
+      <label>Morning (Tiffins):</label>
+      <div class="input-group">
+        <select name="morning[]">
+          <option value="">Select an item</option>
+          {% for item in tiffins %}
+          <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+          {% endfor %}
+        </select>
+        <button
+          type="button"
+          onclick="addMeal('morning-container', 'morning', 'tiffins')"
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div id="afternoon-container">
+      <label>Afternoon:</label>
+      <div class="input-group">
+        <select name="afternoon[]">
+          <option value="">Select an item</option>
+          {% for item in all_items %}
+          <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+          {% endfor %}
+        </select>
+        <button
+          type="button"
+          onclick="addMeal('afternoon-container', 'afternoon', 'all_items')"
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div id="evening-container">
+      <label>Evening (Snacks):</label>
+      <div class="input-group">
+        <select name="evening[]">
+          <option value="">Select an item</option>
+          {% for item in snacks %}
+          <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+          {% endfor %}
+        </select>
+        <button
+          type="button"
+          onclick="addMeal('evening-container', 'evening', 'snacks')"
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div id="night-container">
+      <label>Night:</label>
+      <div class="input-group">
+        <select name="night[]">
+          <option value="">Select an item</option>
+          {% for item in all_items %}
+          <option value="{{ item.item_name }}">{{ item.item_name }}</option>
+          {% endfor %}
+        </select>
+        <button
+          type="button"
+          onclick="addMeal('night-container', 'night', 'all_items')"
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <button type="submit" name="validate">Validate</button>
+  </div>
+</form>
+
+{% if validation_result %}
+<h3>Validation Result: {{ validation_result }}</h3>
+{% if validation_result == "Yes" %}
+<a href="?next_day={{ next_day }}">Proceed to Next Day</a>
+{% endif %} {% endif %}
+
+<script>
+  function addMeal(containerId, name, category) {
+      const container = document.getElementById(containerId);
+      const newInputGroup = document.createElement('div');
+      newInputGroup.classList.add('input-group');
+
+      let options = "";
+      {% for item in tiffins %}
+          if (category === "tiffins") {
+              options += `<option value="{{ item.item_name }}">{{ item.item_name }}</option>`;
+          }
+      {% endfor %}
+      {% for item in snacks %}
+          if (category === "snacks") {
+              options += `<option value="{{ item.item_name }}">{{ item.item_name }}</option>`;
+          }
+      {% endfor %}
+      {% for item in all_items %}
+          if (category === "all_items") {
+              options += `<option value="{{ item.item_name }}">{{ item.item_name }}</option>`;
+          }
+      {% endfor %}
+
+      newInputGroup.innerHTML = `
+          <select name="${name}[]">
+              <option value="">Select an item</option>
+              ${options}
+          </select>
+          <button type="button" onclick="this.parentElement.remove()">-</button>
+      `;
+      container.appendChild(newInputGroup);
+  }
+</script>
+
+<style>
+  .input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  .input-group select {
+    margin-right: 5px;
+  }
+  button {
+    background-color: #0076f4;
+    color: white;
+    padding: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #005bb5;
+  }
+  p,
+  h1,
+  h2,
+  h3 {
+    color: #000000;
+  }
+</style>
+
+{% endblock %}
