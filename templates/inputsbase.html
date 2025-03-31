@@ -96,18 +96,15 @@
 </table>
 
 <div class="button-container">
-  <a href="{% url 'score' %}">
-    <button type="button" class="btn btn-back">← Go Back</button>
-  </a>
+    <a href="{% url 'score' %}">
+        <button type="button" class="btn btn-back">← Go Back</button>
+    </a>
 
-  {% if not meets_requirements.Calories or not meets_requirements.Proteins or
-  not meets_requirements.Fats or not meets_requirements.Sodium or not
-  meets_requirements.Fiber or not meets_requirements.Carbs or not
-  meets_requirements.Sugar %}
-  <a href="{% url 'categorize' %}">
-    <button class="btn btn-suggest">Try our Diet Suggester</button>
-  </a>
-  {% endif %}
+    {% if not meets_requirements.Calories or not meets_requirements.Proteins or not meets_requirements.Fats or not meets_requirements.Sodium or not meets_requirements.Fiber or not meets_requirements.Carbs or not meets_requirements.Sugar %}
+        <a href="{% url 'categorize' %}">
+            <button class="btn btn-suggest">Try our Diet Suggester</button>
+        </a>
+    {% endif %}
 </div>
 
 <style>
