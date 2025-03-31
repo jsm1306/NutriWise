@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container">
     <div class="welcome-box">
-        <h3>Welcome {{ name }}!</h3>
+        <h3>Welcome {{ username }}!</h3>
     </div>
 
     <div class="content-section">
@@ -35,6 +35,9 @@
             </div>
         </form>
         <br>
+        <a href="{% url 'logout' %}">
+            <button type="button" class="btn custom-register-btn">Logout</button>
+          </a>
         <div class="welcome-box">
             <h2 style="color:#042a24; text-align: left;">Quantity per serving:</h2>
         </div>
@@ -46,7 +49,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for item in nutrition_items %}
+            {% for item in nutrition %}
             <tr>
                 <td>{{ item.item_name }}</td>
                 <td>{{ item.unit_weight }}</td>

@@ -13,22 +13,25 @@ from django.views.decorators.cache import cache_control
 import random
 from django.shortcuts import get_object_or_404
 
-def registerPage(request):
-        form=UserCreationForm()
-        if request.method=="POST":
-            form=UserCreationForm(request.POST)
-            if form.is_valid():
-                user=form.save()
-                UserProfile.objects.create(user=user)
+from .forms import CustomUserCreationForm
 
-                return redirect('login')
-            else:
-                messages.error(request,"Password does not follow the rules")
-        context={'form':form}
-        return render(request, 'register.html', context)
+def registerPage(request):
+    form = CustomUserCreationForm()
+    if request.method == "POST":
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            age = form.cleaned_data.get('age')
+            gender = form.cleaned_data.get('gender')
+            UserProfile.objects.create(user=user, age=age, gender=gender)
+            return redirect('login')
+        else:
+            messages.error(request, "Password does not follow the rules")
+    context = {'form': form}
+    return render(request, 'register.html', context)
 def loginPage(request):
     if request.user.is_authenticated:
-        return redirect('mains')
+        return redirect('score')
     else:
         if request.method == 'POST':
             username = request.POST.get('username')
@@ -38,7 +41,7 @@ def loginPage(request):
                 login(request, user)
                 request.session['username'] = username
                 
-                return redirect('mains')
+                return redirect('score')
             else:
                 messages.success(request, "Username or Password is incorrect")
     return render(request, 'login.html')
@@ -51,8 +54,7 @@ def logoutPage(request):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='login')
-def mains(request):#dummy
-    return render(request,'mains.html',{'result':'Diet Score'})
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='login')
@@ -65,33 +67,7 @@ def category_wise_items(request):#to display categories in category.html(navbar)
     }
     return render(request, 'categorylist.html', context)
 
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
-@login_required(login_url='login')
-def add(request):
-    if request.method == 'POST':
-        username = request.session.get('username')
-        if username:
-            age=int(request.POST['age'])
-            gender=request.POST.get('options', '')
-            request.session['age'] = age
-            request.session['gender'] = gender
-            request.session['name'] = username
-            user = User.objects.filter(username=username).first()
-            if user:
-                user_profile, created = UserProfile.objects.get_or_create(user=user)
-                user_profile.age = age
-                user_profile.gender = gender
-                user_profile.save()
 
-            nutrition_items = NutritionInfo.objects.all()
-
-            return render(request, 'score.html', {
-                'age': age,
-                'name': username,
-                'gender': gender,
-                'nutrition_items': nutrition_items,
-            })
-    return render(request, 'mains.html')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='login')
 def categorize(request):#to display items category wise
@@ -147,21 +123,24 @@ def suggester(request):
 
         return render(request, 'suggestresult.html', {'results': results, 'latestsub': latest})
 
-    return redirect('mains.html')
+    return redirect('score.html')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='login')
 def score(request):#back button fn in inputsbase.html
     name = request.session.get('name')  
     age = request.session.get('age')    
-    username = request.session.get('username') 
+    username = request.user.username
     # print(name, age, username)
     nutrition_items = NutritionInfo.objects.values_list('item_name', flat=True)
+    nutrition = NutritionInfo.objects.all()
+
     return render(request, 'score.html', {
         'name': name,
         'age': age,
         'username': username,
         'nutrition_items': nutrition_items,
+        'nutrition': nutrition
     })
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -196,8 +175,9 @@ def bmicalc(request):
     return render(request, 'bmical.html')
 @login_required(login_url='login')
 def daily(request):#this fn is to determine the min requirements based on age&gender, use in compute fn
-    age = request.session.get('age')
-    gender = request.session.get('gender')
+    user_profile = get_object_or_404(UserProfile, user=request.user)
+    age = user_profile.age
+    gender = user_profile.gender
     DAILY_REQUIREMENTS = {
         'Female': {
             (4, 8):  {'Calories': 1200, 'Proteins': 19, 'Fats': 70, 'Sodium': 2300, 'Fiber': 25, 'Carbs': 260, 'Sugar': 50},
