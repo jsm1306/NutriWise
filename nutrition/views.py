@@ -476,15 +476,69 @@ def finalize_meal_plan(request):
     optimized_meal_plan = {}
 
     for day, meals in user_meal_plan.items():
-        optimized_meal_plan[day] = {}
-        for meal_time, items in meals.items():
-            optimized_items, validation_result = optimize_and_validate(request, {meal_time: items})
-            optimized_meal_plan[day][meal_time] = optimized_items
+        optimized_items, validation_result = optimize_and_validate(request, meals)
+        # Initialize meal_time dict for the day
+        optimized_meal_plan[day] = {meal_time: [] for meal_time in ['morning', 'afternoon', 'evening', 'night']}
+        if validation_result == "Yes":
+            # Distribute optimized quantities back to meal_times
+            item_to_meal_time = {}
+            for meal_time, items in meals.items():
+                for item in items:
+                    item_to_meal_time[item] = meal_time
+            for item, quantity in optimized_items:
+                meal_time = item_to_meal_time.get(item, None)
+                if meal_time:
+                    optimized_meal_plan[day][meal_time].append((item, quantity))
+        else:
+            # If validation failed, keep empty lists
+            pass
+
+    meal_times = ['morning', 'afternoon', 'evening', 'night']
 
     return render(request, 'newhtml.html', {
         'user_meal_plan': user_meal_plan,
-        'optimized_meal_plan': optimized_meal_plan
+        'optimized_meal_plan': optimized_meal_plan,
+        'meal_times': meal_times
     })
+
+from django.http import HttpResponse
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+
+def finalize_meal_plan_pdf(request):
+    user_meal_plan = request.session.get('selected_items', {})
+    optimized_meal_plan = {}
+
+    for day, meals in user_meal_plan.items():
+        optimized_items, validation_result = optimize_and_validate(request, meals)
+        optimized_meal_plan[day] = {meal_time: [] for meal_time in ['morning', 'afternoon', 'evening', 'night']}
+        if validation_result == "Yes":
+            item_to_meal_time = {}
+            for meal_time, items in meals.items():
+                for item in items:
+                    item_to_meal_time[item] = meal_time
+            for item, quantity in optimized_items:
+                meal_time = item_to_meal_time.get(item, None)
+                if meal_time:
+                    optimized_meal_plan[day][meal_time].append((item, quantity))
+
+    meal_times = ['morning', 'afternoon', 'evening', 'night']
+
+    template_path = 'newhtml.html'
+    context = {
+        'user_meal_plan': user_meal_plan,
+        'optimized_meal_plan': optimized_meal_plan,
+        'meal_times': meal_times,
+        'pdf': True,  # flag to customize template if needed
+    }
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="finalized_meal_plan.pdf"'
+    template = get_template(template_path)
+    html = template.render(context)
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
 '''
 Changes to be made:
 ● Should add more items to database

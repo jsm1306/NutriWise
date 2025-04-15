@@ -18,5 +18,6 @@ urlpatterns=[
     path('moreinfo/',views.moreinfo,name='moreinfo'), 
     path('mealplan/', views.meal_plan, name='mealplan'),
     path('finalize-meal-plan/', views.finalize_meal_plan, name='finalize_meal_plan'),
+    path('finalize-meal-plan/pdf/', views.finalize_meal_plan_pdf, name='finalize_meal_plan_pdf'),
 
 ]
